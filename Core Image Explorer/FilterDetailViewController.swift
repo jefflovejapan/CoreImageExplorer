@@ -19,42 +19,40 @@ class FilterDetailViewController: UIViewController, UINavigationControllerDelega
         super.viewDidLoad()
 
         filter = CIFilter(name: filterName)
-
-        navigationItem.title = filter.attributes()![kCIAttributeFilterDisplayName] as? NSString
+        navigationItem.title = filter.attributes[kCIAttributeFilterDisplayName] as? String
 
         addSubviews()
     }
 
-    override func viewWillAppear(animated: Bool) {
-        UIApplication.sharedApplication().setStatusBarStyle(.LightContent, animated: animated)
-        navigationController?.navigationBar.barStyle = .Black
-        tabBarController?.tabBar.barStyle = .Black
 
-        applyConstraintsForInterfaceOrientation(UIApplication.sharedApplication().statusBarOrientation)
+    override func viewWillAppear(_ animated: Bool) {
+        UIApplication.shared.statusBarStyle = .lightContent
+        navigationController?.navigationBar.barStyle = .black
+        tabBarController?.tabBar.barStyle = .black
+        applyConstraintsForInterfaceOrientation(interfaceOrientation: UIApplication.shared.statusBarOrientation)
     }
 
-    override func willRotateToInterfaceOrientation(toInterfaceOrientation: UIInterfaceOrientation, duration: NSTimeInterval)
-    {
-        applyConstraintsForInterfaceOrientation(toInterfaceOrientation)
+    override func willRotate(to toInterfaceOrientation: UIInterfaceOrientation, duration: TimeInterval) {
+        applyConstraintsForInterfaceOrientation(interfaceOrientation: toInterfaceOrientation)
     }
 
     func filterParameterDescriptors() -> [ScalarFilterParameter] {
-        var inputNames = (filter.inputKeys() as [String]).filter { (parameterName) -> Bool in
+        let inputNames = (filter.inputKeys).filter { (parameterName) -> Bool in
             return (parameterName as String) != "inputImage"
         }
 
-        let attributes = filter.attributes()!
+        let attributes = filter.attributes
 
         return inputNames.map { (inputName: String) -> ScalarFilterParameter in
-            let attribute = attributes[inputName] as [String : AnyObject]
+            let attribute = attributes[inputName]! as! [String : Any]
             // strip "input" from the start of the parameter name to make it more presentation-friendly
-            let displayName = inputName[advance(inputName.startIndex, 5)..<inputName.endIndex]
-            let minValue = attribute[kCIAttributeSliderMin] as Float
-            let maxValue = attribute[kCIAttributeSliderMax] as Float
-            let defaultValue = attribute[kCIAttributeDefault] as Float
+            let displayName = inputName.suffix(from: inputName.index(inputName.startIndex, offsetBy: 5))
+            let minValue = attribute[kCIAttributeSliderMin] as! NSNumber
+            let maxValue = attribute[kCIAttributeSliderMax] as! NSNumber
+            let defaultValue = attribute[kCIAttributeDefault] as! NSNumber
 
-            return ScalarFilterParameter(name: displayName, key: inputName,
-                                         minimumValue: minValue, maximumValue: maxValue, currentValue: defaultValue)
+            return ScalarFilterParameter(name: String(displayName), key: inputName,
+                                         minimumValue: Float(truncating: minValue), maximumValue: Float(truncating: maxValue), currentValue: Float(truncating: defaultValue))
         }
     }
 
@@ -62,58 +60,54 @@ class FilterDetailViewController: UIViewController, UINavigationControllerDelega
         filteredImageView = FilteredImageView(frame: view.bounds)
         filteredImageView.inputImage = UIImage(named: kSampleImageName)
         filteredImageView.filter = filter
-        filteredImageView.contentMode = .ScaleAspectFit
+        filteredImageView.contentMode = .scaleAspectFit
         filteredImageView.clipsToBounds = true
         filteredImageView.backgroundColor = view.backgroundColor
-        filteredImageView.setTranslatesAutoresizingMaskIntoConstraints(false)
+        filteredImageView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(filteredImageView)
 
         parameterAdjustmentView = ParameterAdjustmentView(frame: view.bounds, parameters: filterParameterDescriptors())
-        parameterAdjustmentView.setTranslatesAutoresizingMaskIntoConstraints(false)
-        parameterAdjustmentView.setAdjustmentDelegate(filteredImageView)
+        parameterAdjustmentView.translatesAutoresizingMaskIntoConstraints = false
+        parameterAdjustmentView.setAdjustmentDelegate(delegate: filteredImageView)
         view.addSubview(parameterAdjustmentView)
     }
 
     func applyConstraintsForInterfaceOrientation(interfaceOrientation: UIInterfaceOrientation) {
         view.removeConstraints(constraints)
-        constraints.removeAll(keepCapacity: true)
+        constraints.removeAll(keepingCapacity: true)
 
         if UIInterfaceOrientationIsLandscape(interfaceOrientation) {
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Width, relatedBy: .Equal,
-                toItem: view, attribute: .Width, multiplier: 0.5, constant: 0))
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Height, relatedBy: .Equal,
-                toItem: view, attribute: .Height, multiplier: 1, constant: -66))
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Top, relatedBy: .Equal,
-                toItem: topLayoutGuide, attribute: .Bottom, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Leading, relatedBy: .Equal,
-                toItem: view, attribute: .Leading, multiplier: 1, constant: 0))
+            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .width, relatedBy: .equal,
+                toItem: view, attribute: .width, multiplier: 0.5, constant: 0))
+            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .height, relatedBy: .equal,
+                toItem: view, attribute: .height, multiplier: 1, constant: -66))
+            constraints.append(filteredImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor))
+            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .leading, relatedBy: .equal,
+                toItem: view, attribute: .leading, multiplier: 1, constant: 0))
 
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Top, relatedBy: .Equal,
-                toItem: topLayoutGuide, attribute: .Bottom, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Trailing, relatedBy: .Equal,
-                toItem: view, attribute: .Trailing, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Width, relatedBy: .Equal,
-                toItem: view, attribute: .Width, multiplier: 0.5, constant: 0))
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Height, relatedBy: .Equal,
-                toItem: view, attribute: .Height, multiplier: 1, constant: 0))
+            constraints.append(parameterAdjustmentView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor))
+            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .trailing, relatedBy: .equal,
+                toItem: view, attribute: .trailing, multiplier: 1, constant: 0))
+            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .width, relatedBy: .equal,
+                toItem: view, attribute: .width, multiplier: 0.5, constant: 0))
+            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .height, relatedBy: .equal,
+                toItem: view, attribute: .height, multiplier: 1, constant: 0))
         } else {
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Width, relatedBy: .Equal,
-                toItem: view, attribute: .Width, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Height, relatedBy: .Equal,
-                toItem: view, attribute: .Height, multiplier: 0.5, constant: 0))
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Top, relatedBy: .Equal,
-                toItem: topLayoutGuide, attribute: .Bottom, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .Leading, relatedBy: .Equal,
-                toItem: view, attribute: .Leading, multiplier: 1, constant: 0))
+            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .width, relatedBy: .equal,
+                toItem: view, attribute: .width, multiplier: 1, constant: 0))
+            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .height, relatedBy: .equal,
+                toItem: view, attribute: .height, multiplier: 0.5, constant: 0))
+            constraints.append(view.safeAreaLayoutGuide.topAnchor.constraint(equalTo: filteredImageView.topAnchor))
+            constraints.append(NSLayoutConstraint(item: filteredImageView, attribute: .leading, relatedBy: .equal,
+                toItem: view, attribute: .leading, multiplier: 1, constant: 0))
 
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Bottom, relatedBy: .Equal,
-                toItem: bottomLayoutGuide, attribute: .Top, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Leading, relatedBy: .Equal,
-                toItem: view, attribute: .Leading, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Width, relatedBy: .Equal,
-                toItem: view, attribute: .Width, multiplier: 1, constant: 0))
-            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .Height, relatedBy: .Equal,
-                toItem: view, attribute: .Height, multiplier: 0.5, constant: -88))
+            constraints.append(parameterAdjustmentView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor))
+            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .leading, relatedBy: .equal,
+                toItem: view, attribute: .leading, multiplier: 1, constant: 0))
+            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .width, relatedBy: .equal,
+                toItem: view, attribute: .width, multiplier: 1, constant: 0))
+            constraints.append(NSLayoutConstraint(item: parameterAdjustmentView, attribute: .height, relatedBy: .equal,
+                toItem: view, attribute: .height, multiplier: 0.5, constant: -88))
         }
 
         self.view.addConstraints(constraints)
