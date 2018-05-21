@@ -29,31 +29,33 @@ class FilteredImageView: GLKView, ParameterAdjustmentDelegate {
     }
 
     override init(frame: CGRect) {
-        super.init(frame: frame, context: EAGLContext(api: .openGLES2)!)
+        super.init(frame: frame, context: EAGLContext(api: .openGLES2)!)    // initializing view with an EAGLContext (the view is bound to the context?)
         clipsToBounds = true
-        ciContext = CIContext(eaglContext: context)
+        ciContext = CIContext(eaglContext: context) // creating a CIContext backed by same EAGLContext. Drawing into this ciContext draws into the view?
     }
 
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         clipsToBounds = true
-        self.context = EAGLContext(api: .openGLES2)!
+        self.context = EAGLContext(api: .openGLES2)!    // had no idea that the view's context was settable
         ciContext = CIContext(eaglContext: context)
     }
 
     override func draw(_ rect: CGRect) {
-        if ciContext != nil && inputImage != nil && filter != nil {
-            let inputCIImage = CIImage(image: inputImage)
-            filter.setValue(inputCIImage, forKey: kCIInputImageKey)
-            if let outputImage = filter.outputImage {
-                clearBackground()
-
-                let inputBounds = inputCIImage!.extent
-                let drawableBounds = CGRect(x: 0, y: 0, width: self.drawableWidth, height: self.drawableHeight)
-                let targetBounds = imageBoundsForContentMode(fromRect: inputBounds, toRect: drawableBounds)
-                ciContext.draw(outputImage, in: targetBounds, from: inputBounds)
-            }
+        guard ciContext != nil && inputImage != nil && filter != nil else {
+            return
         }
+        let inputCIImage = CIImage(image: inputImage)
+        filter.setValue(inputCIImage, forKey: kCIInputImageKey)
+        guard let outputImage = filter.outputImage else {
+            return
+        }
+        clearBackground()
+
+        let inputBounds = inputCIImage!.extent
+        let drawableBounds = CGRect(x: 0, y: 0, width: self.drawableWidth, height: self.drawableHeight)
+        let targetBounds = imageBoundsForContentMode(fromRect: inputBounds, toRect: drawableBounds)
+        ciContext.draw(outputImage, in: targetBounds, from: inputBounds)
     }
 
     override func layoutSubviews() {
